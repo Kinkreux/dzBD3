@@ -10,7 +10,6 @@ if (array_key_exists('new_login', $_POST)) {
             echo '<strong>Уже есть пользователь с логином ' . $gotNewLogin . '. Попробуйте придумать другой логин.</strong>';
         } else {
             $gotNewPassword = preg_replace("/[^a-zA-Z0-9\s]/", "", $_POST['new_password']);
-            var_dump($gotNewPassword);
             if (!empty($gotNewPassword)) {
                 $pass_hashNew = MD5($gotNewPassword);
             } else {
