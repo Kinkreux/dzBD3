@@ -48,11 +48,6 @@ if (array_key_exists('description', $_POST)) {
     $description = newTaskDescription();
     newTask($description, $dataBaseTasks, $author);
 }
-
-//создаем массив задач
-$sql = "SELECT id, user_id, user_assigned_id, description, is_done, date_added FROM tasks WHERE user_id=$author GROUP BY user_assigned_id";
-$tasksArray = $dataBaseTasks->query($sql);
-$tasksArray = $tasksArray->fetchAll();
 ?>
 
 <html>
@@ -94,9 +89,11 @@ $tasksArray = $tasksArray->fetchAll();
     <tbody>
     <?php
 
-    if($tasksArray == 0) {
-        echo 'Нет созданных мной задач.';
-    } else {
+    //создаем массив задач
+    $sql = "SELECT id, user_id, user_assigned_id, description, is_done, date_added FROM tasks WHERE user_id='".$author."' GROUP BY user_assigned_id";
+    $tasksArray = $dataBaseTasks->query($sql);
+    $tasksArray = $tasksArray->fetchAll();
+
     //читаем и выводим задачи построчно
     foreach ($tasksArray as $task) : ?>
         <tr>
@@ -148,10 +145,79 @@ $tasksArray = $tasksArray->fetchAll();
             <td><?php //удалить задачу
                     echo '<a href="?id=' . $id . '&action=deleteTask">'.'Удалить</a>' ?></td>
         </tr>
-    <?php endforeach; } ?>
+    <?php endforeach; ?>
     </tbody>
 </table>
 <h3>Задачи, порученные мне:</h3>
+<table>
+    <thead>
+    <th>Задача</th>
+    <th>Автор</th>
+    <th>Ответственный</th>
+    <th>Сделано</th>
+    <th>Дата создания</th>
+    <th>Действия:</th>
+    </thead>
+    <tbody>
+    <?php
+
+    //создаем массив задач, которые нам кто-то делегировал
+    $sql = "SELECT id, user_id, user_assigned_id, description, is_done, date_added FROM tasks WHERE user_assigned_id='".$author."' GROUP BY user_id";
+    $tasksArray = $dataBaseTasks->query($sql);
+    $tasksArray = $tasksArray->fetchAll();
+    //читаем и выводим задачи построчно
+    foreach ($tasksArray as $task) : ?>
+        <tr>
+            <?php //id
+            $id = $task['id'] ?>
+            <td><?php //Задача
+                echo $task['description'] ?></td>
+            <td><?php //Автор
+                $user =  $task['user_id'];
+                $userLogin = $dataBaseTasks->query("SELECT login FROM users WHERE id='".$user."'");
+                $userLogin = $userLogin->fetch();
+                echo $userLogin['login']?></td>
+            <td><?php //Я ответственный
+                $user_assigned =  $task['user_assigned_id'];
+                $sqlAssigned = "SELECT login FROM users WHERE id='".$user_assigned."'";
+                $userAssignedLogin = $dataBaseTasks->query($sqlMe);
+                $userAssignedLogin = $userAssignedLogin->fetch();
+                echo $userAssignedLogin['login'] ?></td>
+            <td><?php //статус: сделано / не сделано
+                if ($task['is_done']) {
+                    echo 'Да';
+                } else {
+                    echo 'Нет';
+                };
+                ?></td>
+            <td><?php //дата создания задачи
+                echo date('d.m.Y H:i', strtotime($task['date_added'])); ?></td>
+            <td>
+                <form method="get">
+                    <?php //делегировать задачу
+                    $sqlUsers = "SELECT users.id as user_id, users.login as user_login, tasks.id as task_id FROM users, tasks WHERE users.id not like  '".$author."' and users.id > 0 GROUP BY users.id";
+                    $userList = $dataBaseTasks->query($sqlUsers);
+                    $userList = $userList->fetchALL();
+                    $authorLogin = $dataBaseTasks->query("SELECT login as author_login FROM users where id = '".$author."'");
+                    $authorLogin = $authorLogin->fetch();
+                    ?>
+                    <p>Делегировать:</p>
+                    <select onchange="document.location=this.options[this.selectedIndex].value">
+                        <option><?php echo $authorLogin['author_login'] ?></option>
+                        <?php foreach($userList as $userTask)
+                        {
+                            echo '<option value="index.php?id='.$userTask['task_id'].'&action=assignTask&user_assign_id='.$userTask['user_id'].'">'.$userTask['user_login'].'</option>';
+                        } ?>
+                    </select>
+                </form>
+            <td><?php //выполнить задачу
+                echo '<a href="?id='.$id.'&action=doTask">'.'Выполнить</a>'?></td>
+            <td><?php //удалить задачу
+                echo '<a href="?id=' . $id . '&action=deleteTask">'.'Удалить</a>' ?></td>
+        </tr>
+    <?php endforeach; ?>
+    </tbody>
+</table>
 <a href="logout.php">Выход</a>
 <h2>Код приложения</h2>
 <a href="https://github.com/Kinkreux/dzBD2" target="_blank">Открыть в новом окне репозиторий на Github</a>
